@@ -1,16 +1,23 @@
 import type { HealthEntryRequestDTO } from "../types/HealthEntryRequestDTO";
+import type { ErrorResponseDTO } from "../types/ErrorResponseDTO";
 
 type HealthEntryCreateFormProps = {
     value: HealthEntryRequestDTO;
     onChangeData: (next: HealthEntryRequestDTO) => void;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
     onReset: () => void;
+    error: ErrorResponseDTO | null;
 }
 
-function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthEntryCreateFormProps){
+function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset, error}: HealthEntryCreateFormProps){
     return (
     <form onSubmit={onSubmit}>
-      {/* Inputs kommen gleich hier rein */}
+      {error && (
+        <div style={{ color: "red", marginBottom: "0.5rem" }}>
+          {error.message}
+        </div>
+      )}
+
       <div>
         <label>
             Datum:
@@ -22,6 +29,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "date")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <label>
@@ -34,6 +48,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "weightInKg")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <label>
@@ -46,6 +67,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "heightInMeter")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <label>
@@ -58,6 +86,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "steps")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <label>
@@ -70,6 +105,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "sleepHours")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <label>
@@ -82,6 +124,13 @@ function HealthEntryCreateForm({value, onChangeData, onSubmit, onReset}: HealthE
               }
             />
           </label>
+          {error?.details
+            .filter((d) => d.field === "waterLiters")
+            .map((d, index) => (
+            <div key={index} style={{ color: "red", fontSize: "0.9rem" }}>
+              {d.message}
+            </div>
+          ))}
       </div>
       <div>
         <button type="submit">Speichern</button>
