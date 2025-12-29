@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { HealthEntryResponseDTO } from "./types/HealthEntryResponseDTO";
 import type { HealthEntryRequestDTO } from "./types/HealthEntryRequestDTO";
 import type { ErrorResponseDTO } from "./types/ErrorResponseDTO";
+import type { HealthEntryPageResponseDTO } from "./types/HealthEntryPageResponseDTO";
 import HealthEntryList from "./components/HealthEntryList";
 import HealthEntryEditPanel from "./components/HealthEntryEditPanel";
 import HealthEntryCreateForm from "./components/HealthEntryCreateForm";
@@ -28,8 +29,8 @@ function App() {
   useEffect(() => {
     fetch("http://localhost:8080/api/entries")
       .then((res) => res.json())
-      .then((data) => {
-        setEntries(data);
+      .then((data: HealthEntryPageResponseDTO) => {
+        setEntries(data.content);
       })
       .catch((err) => console.error("Error fetching entries:", err));
   }, []);
