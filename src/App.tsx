@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { HealthEntryResponseDTO } from "./types/HealthEntryResponseDTO";
 import type { HealthEntryRequestDTO } from "./types/HealthEntryRequestDTO";
 import type { ErrorResponseDTO } from "./types/ErrorResponseDTO";
+import type { HealthEntryPageResponseDTO } from "./types/HealthEntryPageResponseDTO";
 import HealthEntryList from "./components/HealthEntryList";
 import HealthEntryEditPanel from "./components/HealthEntryEditPanel";
 import HealthEntryCreateForm from "./components/HealthEntryCreateForm";
@@ -15,7 +16,20 @@ function App() {
     sleepHours: null,
     waterLiters: null,
   };
-  const [entries, setEntries] = useState<HealthEntryResponseDTO[]>([]);
+
+  const pageSize = [5, 10, 20, 50];
+  type EntryQuery = {
+    page: number;
+    size: number;
+  };
+  const [query, setQuery] = useState<EntryQuery>({
+    page: 0,
+    size: 10,
+  });
+  const [entryPage, setEntryPage] = useState<HealthEntryPageResponseDTO | null>(
+    null
+  );
+  //const [entries, setEntries] = useState<HealthEntryResponseDTO[]>([]);
   const [newEntry, setNewEntry] = useState<HealthEntryRequestDTO>(emptyEntry);
   const [editingEntry, setEditingEntry] = useState<{
     id: number;
@@ -26,13 +40,15 @@ function App() {
     useState<ErrorResponseDTO | null>(null);
 
   useEffect(() => {
-    fetch("http://localhost:8080/api/entries")
+    fetch(
+      `http://localhost:8080/api/entries?page=${query.page}&size=${query.size}`
+    )
       .then((res) => res.json())
-      .then((data) => {
-        setEntries(data);
+      .then((data: HealthEntryPageResponseDTO) => {
+        setEntryPage(data);
       })
       .catch((err) => console.error("Error fetching entries:", err));
-  }, []);
+  }, [query.page, query.size]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -69,7 +85,15 @@ function App() {
           return;
         }
 
-        setEntries((prev) => [...prev, createdEntry]);
+        setEntryPage((prev) =>
+          prev
+            ? {
+                ...prev,
+                content: [...prev.content, createdEntry],
+                totalElements: prev.totalElements + 1,
+              }
+            : prev
+        );
         setNewEntry(emptyEntry);
       })
       .catch((err) => {
@@ -94,7 +118,15 @@ function App() {
         if (!res.ok) {
           throw new Error("Failed to delete this entity with id: " + id);
         }
-        setEntries((prev) => prev.filter((e) => e.id !== id));
+        setEntryPage((prev) =>
+          prev
+            ? {
+                ...prev,
+                content: prev.content.filter((e) => e.id !== id),
+                totalElements: prev.totalElements - 1,
+              }
+            : prev
+        );
       })
       .catch((err) => {
         console.error(err);
@@ -149,10 +181,15 @@ function App() {
             return;
           }
 
-          setEntries((prevEntries) =>
-            prevEntries.map((entry) =>
-              entry.id === updatedEntry.id ? updatedEntry : entry
-            )
+          setEntryPage((prevEntries) =>
+            prevEntries
+              ? {
+                  ...prevEntries,
+                  content: prevEntries.content.map((entry) =>
+                    entry.id === updatedEntry.id ? updatedEntry : entry
+                  ),
+                }
+              : prevEntries
           );
         })
         .then(() => {
@@ -165,8 +202,40 @@ function App() {
   return (
     <div>
       <h1>Health Entries</h1>
+      <div>
+        <button
+          type="button"
+          onClick={() => setQuery((q) => ({ ...q, page: q.page - 1 }))}
+          disabled={!entryPage || query.page === 0}
+        >
+          Zurück
+        </button>
+        <span>
+          Seite {query.page + 1} von {entryPage?.totalPages ?? 1} (insgesamt{" "}
+          {entryPage?.totalElements ?? 0} Einträge)
+        </span>
+        <button
+          type="button"
+          onClick={() => setQuery((q) => ({ ...q, page: q.page + 1 }))}
+          disabled={!entryPage || query.page + 1 >= (entryPage.totalPages ?? 0)}
+        >
+          Weiter
+        </button>
+        <label>
+          Einträge pro Seite: 
+          <select
+            value={query.size}
+            onChange={(e) => {
+              const newSize = Number(e.target.value);
+              setQuery(q => ({...q, page:0, size: newSize}))
+            }}
+          >
+            {pageSize.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
+      </div>
       <HealthEntryList
-        entries={entries}
+        entries={entryPage?.content ?? []}
         onDelete={handleDelete}
         onEdit={handleEditClick}
       />
