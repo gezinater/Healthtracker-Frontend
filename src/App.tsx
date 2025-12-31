@@ -17,6 +17,7 @@ function App() {
     waterLiters: null,
   };
 
+  const pageSize = [5, 10, 20, 50];
   type EntryQuery = {
     page: number;
     size: number;
@@ -220,6 +221,18 @@ function App() {
         >
           Weiter
         </button>
+        <label>
+          Einträge pro Seite: 
+          <select
+            value={query.size}
+            onChange={(e) => {
+              const newSize = Number(e.target.value);
+              setQuery(q => ({...q, page:0, size: newSize}))
+            }}
+          >
+            {pageSize.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </label>
       </div>
       <HealthEntryList
         entries={entryPage?.content ?? []}
