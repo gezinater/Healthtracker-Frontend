@@ -21,10 +21,14 @@ function App() {
   type EntryQuery = {
     page: number;
     size: number;
+    from: string | null;
+    to: string | null;
   };
   const [query, setQuery] = useState<EntryQuery>({
     page: 0,
     size: 10,
+    from: null,
+    to: null,
   });
   const [entryPage, setEntryPage] = useState<HealthEntryPageResponseDTO | null>(
     null
@@ -38,17 +42,32 @@ function App() {
   const [createError, setCreateError] = useState<ErrorResponseDTO | null>(null);
   const [createEditError, setCreateEditError] =
     useState<ErrorResponseDTO | null>(null);
+  const isDateRangeInvalid = query.from !== null && query.to !== null && query.from > query.to;
 
   useEffect(() => {
-    fetch(
-      `http://localhost:8080/api/entries?page=${query.page}&size=${query.size}`
-    )
+    if (isDateRangeInvalid) {
+      return;
+    }
+
+    const baseUrl: string = "http://localhost:8080/api/entries";
+    const params = new URLSearchParams();
+    params.set("page", String(query.page));
+    params.set("size", String(query.size));
+    if(query.from !== null){
+      params.set("from", String(query.from));
+    }
+    if(query.to !== null){
+      params.set("to", String(query.to));
+    }
+    const url: string = baseUrl + "?" + params.toString();
+
+    fetch(url)
       .then((res) => res.json())
       .then((data: HealthEntryPageResponseDTO) => {
         setEntryPage(data);
       })
       .catch((err) => console.error("Error fetching entries:", err));
-  }, [query.page, query.size]);
+  }, [query.page, query.size, query.from, query.to]);
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -222,18 +241,64 @@ function App() {
           Weiter
         </button>
         <label>
-          Einträge pro Seite: 
+          Einträge pro Seite:
           <select
             value={query.size}
             onChange={(e) => {
               const newSize = Number(e.target.value);
-              setQuery(q => ({...q, page:0, size: newSize}))
+              setQuery((q) => ({ ...q, page: 0, size: newSize }));
             }}
           >
-            {pageSize.map(s => <option key={s} value={s}>{s}</option>)}
+            {pageSize.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
           </select>
         </label>
       </div>
+      <div>
+        <label>
+          Datum-von:
+          <input
+            type="date"
+            value={query.from ?? ""}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                page: 0,
+                from: e.target.value || null,
+              }))
+            }
+          />
+        </label>
+        <label>
+          {" "}
+          Datum-bis:
+          <input
+            type="date"
+            value={query.to ?? ""}
+            onChange={(e) =>
+              setQuery((q) => ({
+                ...q,
+                page: 0,
+                to: e.target.value || null,
+              }))
+            }
+          />
+        </label>
+        <button
+          type="button"
+          onClick={() =>
+            setQuery((q) => ({ ...q, page: 0, from: null, to: null }))
+          }
+        >
+          Datum Reset
+        </button>
+      </div>
+      {isDateRangeInvalid && (
+        <p style={{ color: "red"}}>Datum-von darf nicht nach Datum-bis liegen.</p>
+      )}
       <HealthEntryList
         entries={entryPage?.content ?? []}
         onDelete={handleDelete}
