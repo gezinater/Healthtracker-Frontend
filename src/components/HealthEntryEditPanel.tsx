@@ -6,6 +6,7 @@ type HealthEntryEditPanelProps = {
   onCancel: () => void;
   onChangeData: (next: HealthEntryRequestDTO) => void;
   onSave: () => void;
+  onSaving: boolean;
   error: ErrorResponseDTO | null;
 };
 
@@ -14,6 +15,7 @@ function HealthEntryEditPanel({
   onCancel,
   onChangeData,
   onSave,
+  onSaving,
   error,
 }: HealthEntryEditPanelProps) {
   if (!editing) {
@@ -23,7 +25,6 @@ function HealthEntryEditPanel({
   return (
     <div>
       <div>
-        <h2>Bearbeiten</h2>
         {error && (
           <div style={{ color: "red", marginBottom: "0.5rem" }}>
             {error.message}
@@ -155,8 +156,8 @@ function HealthEntryEditPanel({
             </div>
           ))}
       </div>
-      <button type="button" onClick={onSave}>
-        Speichern
+      <button type="button" onClick={onSave} disabled={onSaving===true}>
+        {onSaving ? <span className="spinner" /> : "Speichern"}
       </button>
       <button type="button" onClick={onCancel}>
         Abbrechen
