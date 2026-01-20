@@ -6,6 +6,7 @@ import type { HealthEntryPageResponseDTO } from "./types/HealthEntryPageResponse
 import HealthEntryList from "./components/HealthEntryList";
 import HealthEntryEditPanel from "./components/HealthEntryEditPanel";
 import HealthEntryCreateForm from "./components/HealthEntryCreateForm";
+import Modal from "./components/modal/Modal";
 
 function App() {
   const emptyEntry: HealthEntryRequestDTO = {
@@ -16,6 +17,7 @@ function App() {
     sleepHours: null,
     waterLiters: null,
   };
+
 
   const pageSize = [5, 10, 20, 50];
   type EntryQuery = {
@@ -43,6 +45,7 @@ function App() {
   const [createEditError, setCreateEditError] =
     useState<ErrorResponseDTO | null>(null);
   const isDateRangeInvalid = query.from !== null && query.to !== null && query.from > query.to;
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (isDateRangeInvalid) {
@@ -53,10 +56,10 @@ function App() {
     const params = new URLSearchParams();
     params.set("page", String(query.page));
     params.set("size", String(query.size));
-    if(query.from !== null){
+    if (query.from !== null) {
       params.set("from", String(query.from));
     }
-    if(query.to !== null){
+    if (query.to !== null) {
       params.set("to", String(query.to));
     }
     const url: string = baseUrl + "?" + params.toString();
@@ -107,10 +110,10 @@ function App() {
         setEntryPage((prev) =>
           prev
             ? {
-                ...prev,
-                content: [...prev.content, createdEntry],
-                totalElements: prev.totalElements + 1,
-              }
+              ...prev,
+              content: [...prev.content, createdEntry],
+              totalElements: prev.totalElements + 1,
+            }
             : prev
         );
         setNewEntry(emptyEntry);
@@ -140,10 +143,10 @@ function App() {
         setEntryPage((prev) =>
           prev
             ? {
-                ...prev,
-                content: prev.content.filter((e) => e.id !== id),
-                totalElements: prev.totalElements - 1,
-              }
+              ...prev,
+              content: prev.content.filter((e) => e.id !== id),
+              totalElements: prev.totalElements - 1,
+            }
             : prev
         );
       })
@@ -171,52 +174,66 @@ function App() {
   };
 
   const handlePut = () => {
-    if (editingEntry !== null) {
-      setCreateEditError(null);
-
-      fetch(`http://localhost:8080/api/entries/${editingEntry.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(editingEntry.data),
-      })
-        .then((res) => {
-          if (res.status === 400) {
-            res.json().then((errorBody: ErrorResponseDTO) => {
-              setCreateEditError(errorBody);
-              return null;
-            });
-          }
-
-          if (!res.ok) {
-            throw new Error(`PUT failed with status ${res.status}`);
-          }
-
-          return res.json();
-        })
-        .then((updatedEntry) => {
-          if (!updatedEntry) {
-            return;
-          }
-
-          setEntryPage((prevEntries) =>
-            prevEntries
-              ? {
-                  ...prevEntries,
-                  content: prevEntries.content.map((entry) =>
-                    entry.id === updatedEntry.id ? updatedEntry : entry
-                  ),
-                }
-              : prevEntries
-          );
-        })
-        .then(() => {
-          setEditingEntry(null);
-        })
-        .catch((err) => console.error(err));
+    if (editingEntry === null) {
+      return;
     }
+
+    setCreateEditError(null);
+    setIsSaving(true);
+
+    fetch(`http://localhost:8080/api/entries/${editingEntry.id}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(editingEntry.data),
+    })
+      .then(async (res) => {
+        if (res.status === 400) {
+          const errorBody: ErrorResponseDTO = await res.json();
+          setCreateEditError(errorBody);
+          return null; // wichtig: stoppt "Erfolgspfad"
+        }
+
+        if (!res.ok) {
+          throw new Error(`PUT failed with status ${res.status}`);
+        }
+
+        const updatedEntry = await res.json();
+        return updatedEntry;
+      })
+      .then((updatedEntry) => {
+        if (!updatedEntry) {
+          return; // z.B. bei 400
+        }
+
+        setEntryPage((prev) =>
+          prev
+            ? {
+              ...prev,
+              content: prev.content.map((entry) =>
+                entry.id === updatedEntry.id ? updatedEntry : entry
+              ),
+            }
+            : prev
+        );
+
+        // NUR bei Erfolg schließen
+        closeEditModal();
+      })
+      .catch((err) => {
+        console.error(err);
+        // optional: hier könntest du noch einen globalen Fehler setzen
+      })
+      .finally(() => {
+        setIsSaving(false);
+      });
   };
+
+  const closeEditModal = () => {
+    setEditingEntry(null);
+    setCreateEditError(null);
+  }
 
   return (
     <div>
@@ -297,7 +314,7 @@ function App() {
         </button>
       </div>
       {isDateRangeInvalid && (
-        <p style={{ color: "red"}}>Datum-von darf nicht nach Datum-bis liegen.</p>
+        <p style={{ color: "red" }}>Datum-von darf nicht nach Datum-bis liegen.</p>
       )}
       <HealthEntryList
         entries={entryPage?.content ?? []}
@@ -305,17 +322,23 @@ function App() {
         onEdit={handleEditClick}
       />
 
-      <HealthEntryEditPanel
-        editing={editingEntry}
-        onCancel={() => setEditingEntry(null)}
-        onChangeData={(nextData) =>
-          setEditingEntry((prev) =>
-            prev ? { id: prev.id, data: nextData } : prev
-          )
-        }
-        onSave={handlePut}
-        error={createEditError}
-      />
+      <Modal
+        isOpen={editingEntry !== null}
+        onClose={closeEditModal}
+        title="Eintrag bearbeiten"
+      >
+        <HealthEntryEditPanel
+          editing={editingEntry}
+          onCancel={closeEditModal}
+          onChangeData={(nextData) =>
+            setEditingEntry((prev) =>
+              prev ? { id: prev.id, data: nextData } : prev
+            )}
+          onSave={handlePut}
+          onSaving={isSaving}
+          error={createEditError}
+        />
+      </Modal>
 
       <HealthEntryCreateForm
         value={newEntry}
